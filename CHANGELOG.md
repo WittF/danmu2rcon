@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [1.0.0] - 2024-06-02
+## [1.0.0] - 2025-06-02
 
 ### 🎮 Added
 - 🎮 完整的B站弹幕监听系统
@@ -22,7 +22,7 @@ All notable changes to this project will be documented in this file.
 
 ### 🛠 Technical
 - 🔧 健壮的错误处理机制
-- �� 详细的日志系统
+- 📝 详细的日志系统
 - ⚙️ 可视化配置管理
 - 🧪 完整的测试功能
 
@@ -57,7 +57,7 @@ All notable changes to this project will be documented in this file.
 ### 版本说明格式
 - 🎮 **Added** - 新功能
 - 🔧 **Changed** - 功能变更
-- �� **Fixed** - Bug修复
+- 🐛 **Fixed** - Bug修复
 - 🎯 **Removed** - 移除的功能
 - 🔒 **Security** - 安全相关
 - ⚠️ **Deprecated** - 将被废弃的功能
