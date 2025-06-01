@@ -1,0 +1,320 @@
+name: 🚀 自动发布版本
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # 匹配版本标签，如 v1.0.0, v2.1.3
+
+env:
+  WEBDAV_URL: ${{ secrets.WEBDAV_URL }}
+  WEBDAV_USERNAME: ${{ secrets.WEBDAV_USERNAME }}
+  WEBDAV_PASSWORD: ${{ secrets.WEBDAV_PASSWORD }}
+
+jobs:
+  release:
+    name: 📦 构建和发布
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 获取完整历史用于生成变更日志
+
+      - name: 🟢 设置 Node.js 环境
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: 📦 安装依赖
+        run: npm ci
+
+      - name: 🔍 验证项目完整性
+        run: |
+          echo "📋 检查关键文件..."
+          ls -la
+          echo "✅ package.json存在" && test -f package.json
+          echo "✅ index.js存在" && test -f index.js
+          echo "✅ config.js存在" && test -f config.js
+          echo "✅ README.md存在" && test -f README.md
+
+      - name: 📝 提取版本信息
+        id: version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "clean_version=${VERSION#v}" >> $GITHUB_OUTPUT
+          echo "🏷️ 发布版本: $VERSION"
+
+      - name: 📝 生成变更日志
+        id: changelog
+        run: |
+          if [ -f CHANGELOG.md ]; then
+            echo "从CHANGELOG.md提取变更信息..."
+            # 提取当前版本的变更内容
+            awk '/^## \['${{ steps.version.outputs.clean_version }}'\]/{flag=1; next} /^## \[/{flag=0} flag' CHANGELOG.md > current_changelog.txt
+            if [ -s current_changelog.txt ]; then
+              echo "changelog_content<<EOF" >> $GITHUB_OUTPUT
+              cat current_changelog.txt >> $GITHUB_OUTPUT
+              echo "EOF" >> $GITHUB_OUTPUT
+            else
+              echo "changelog_content=🎉 版本 ${{ steps.version.outputs.version }} 发布！" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "changelog_content=🎉 版本 ${{ steps.version.outputs.version }} 发布！查看代码获取最新功能。" >> $GITHUB_OUTPUT
+          fi
+
+      - name: 📦 创建发布包
+        run: |
+          echo "🗂️ 准备发布文件..."
+          
+          # 创建临时打包目录
+          mkdir -p release-temp/danmu2rcon-${{ steps.version.outputs.clean_version }}
+          
+          # 复制核心运行文件
+          echo "📋 复制核心文件..."
+          cp -v \
+            index.js \
+            rcon-client.js \
+            danmu-listener.js \
+            event-bridge-server.js \
+            config.js \
+            package.json \
+            package-lock.json \
+            README.md \
+            LICENSE \
+            CONTRIBUTING.md \
+            CHANGELOG.md \
+            start.bat \
+            favicon.ico \
+            release-temp/danmu2rcon-${{ steps.version.outputs.clean_version }}/
+          
+          # 复制public目录（如果存在）
+          if [ -d "public" ]; then
+            echo "📁 复制public目录..."
+            cp -r public release-temp/danmu2rcon-${{ steps.version.outputs.clean_version }}/
+          fi
+          
+          # 显示排除的开发文件
+          echo "🚫 以下开发文件将被排除在发布包之外:"
+          echo "   - create-tag.bat (版本标签创建脚本)"
+          echo "   - docs/RELEASE.md (发布工作流文档)"
+          echo "   - .github/ (GitHub Actions工作流)"
+          echo "   - .git/ (Git版本控制目录)"
+          echo "   - node_modules/ (依赖包，将重新安装生产版本)"
+          
+          # 进入打包目录
+          cd release-temp
+          
+          # 创建完整版本（包含依赖）
+          echo "📦 创建完整版本（包含node_modules）..."
+          cd danmu2rcon-${{ steps.version.outputs.clean_version }}
+          npm ci --production --silent
+          cd ..
+          zip -r ../danmu2rcon-${{ steps.version.outputs.clean_version }}-full.zip danmu2rcon-${{ steps.version.outputs.clean_version }}
+          
+          # 创建源码版本（不包含依赖）
+          echo "📦 创建源码版本..."
+          rm -rf danmu2rcon-${{ steps.version.outputs.clean_version }}/node_modules
+          zip -r ../danmu2rcon-${{ steps.version.outputs.clean_version }}-source.zip danmu2rcon-${{ steps.version.outputs.clean_version }}
+          
+          # 回到根目录
+          cd ..
+          
+          # 验证生成的文件
+          echo "✅ 生成的发布包："
+          ls -lh *.zip
+          
+          # 显示发布包内容摘要
+          echo ""
+          echo "📦 发布包内容摘要："
+          unzip -l danmu2rcon-${{ steps.version.outputs.clean_version }}-source.zip | head -20
+
+      - name: 🎯 创建 GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          release_name: 🎮 Danmu2RCON ${{ steps.version.outputs.version }}
+          body: |
+            ## 🎉 版本 ${{ steps.version.outputs.version }} 发布
+
+            ### 📥 下载选项
+            - **完整版本** (`danmu2rcon-${{ steps.version.outputs.clean_version }}-full.zip`): 包含所有依赖，下载即用
+            - **源码版本** (`danmu2rcon-${{ steps.version.outputs.clean_version }}-source.zip`): 仅源码，需要运行 `npm install`
+
+            ### 🚀 快速开始
+            1. 下载完整版本
+            2. 解压到任意目录
+            3. Windows用户双击 `start.bat`，其他系统运行 `node index.js`
+            4. 访问 http://localhost:3000 进行配置
+
+            ### 📋 系统要求
+            - Node.js 16.0+
+            - Minecraft服务器（开启RCON）
+            - LAPLACE Chat弹幕客户端
+
+            ### 🔄 变更内容
+            ${{ steps.changelog.outputs.changelog_content }}
+
+            ### 📞 技术支持
+            - 📚 使用文档：查看项目README
+            - 🐛 问题反馈：[GitHub Issues](https://github.com/${{ github.repository }}/issues)
+            - 📧 联系作者：WittF@qq.com
+
+            ---
+            ⭐ 如果这个项目对您有帮助，请给个星标支持！
+          draft: false
+          prerelease: false
+
+      - name: ⬆️ 上传完整版本到 Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./danmu2rcon-${{ steps.version.outputs.clean_version }}-full.zip
+          asset_name: danmu2rcon-${{ steps.version.outputs.clean_version }}-full.zip
+          asset_content_type: application/zip
+
+      - name: ⬆️ 上传源码版本到 Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./danmu2rcon-${{ steps.version.outputs.clean_version }}-source.zip
+          asset_name: danmu2rcon-${{ steps.version.outputs.clean_version }}-source.zip
+          asset_content_type: application/zip
+
+      - name: 🌐 上传到 WebDAV 服务器
+        if: env.WEBDAV_URL != ''
+        run: |
+          echo "🌐 开始上传到WebDAV服务器..."
+          
+          # 安装curl（如果需要）
+          sudo apt-get update && sudo apt-get install -y curl
+          
+          # 创建WebDAV目录
+          WEBDAV_DIR="danmu2rcon/releases/${{ steps.version.outputs.version }}"
+          
+          echo "📁 创建远程目录: $WEBDAV_DIR"
+          curl -X MKCOL \
+            -u "$WEBDAV_USERNAME:$WEBDAV_PASSWORD" \
+            "$WEBDAV_URL/danmu2rcon/" || true
+          
+          curl -X MKCOL \
+            -u "$WEBDAV_USERNAME:$WEBDAV_PASSWORD" \
+            "$WEBDAV_URL/danmu2rcon/releases/" || true
+          
+          curl -X MKCOL \
+            -u "$WEBDAV_USERNAME:$WEBDAV_PASSWORD" \
+            "$WEBDAV_URL/$WEBDAV_DIR/" || true
+          
+          # 上传完整版本
+          echo "⬆️ 上传完整版本..."
+          curl -T "danmu2rcon-${{ steps.version.outputs.clean_version }}-full.zip" \
+            -u "$WEBDAV_USERNAME:$WEBDAV_PASSWORD" \
+            "$WEBDAV_URL/$WEBDAV_DIR/danmu2rcon-${{ steps.version.outputs.clean_version }}-full.zip"
+          
+          # 上传源码版本
+          echo "⬆️ 上传源码版本..."
+          curl -T "danmu2rcon-${{ steps.version.outputs.clean_version }}-source.zip" \
+            -u "$WEBDAV_USERNAME:$WEBDAV_PASSWORD" \
+            "$WEBDAV_URL/$WEBDAV_DIR/danmu2rcon-${{ steps.version.outputs.clean_version }}-source.zip"
+          
+          # 创建版本信息文件
+          echo "📝 创建版本信息文件..."
+          cat > version-info.json << EOF
+          {
+            "version": "${{ steps.version.outputs.version }}",
+            "clean_version": "${{ steps.version.outputs.clean_version }}",
+            "release_date": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+            "github_release": "https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.version }}",
+            "files": {
+              "full": "danmu2rcon-${{ steps.version.outputs.clean_version }}-full.zip",
+              "source": "danmu2rcon-${{ steps.version.outputs.clean_version }}-source.zip"
+            },
+            "requirements": {
+              "nodejs": "16.0+",
+              "minecraft": "支持RCON的版本",
+              "platform": "Windows/Linux/macOS"
+            },
+            "excluded_files": [
+              "create-tag.bat",
+              "docs/RELEASE.md",
+              ".github/",
+              ".git/"
+            ]
+          }
+          EOF
+          
+          curl -T "version-info.json" \
+            -u "$WEBDAV_USERNAME:$WEBDAV_PASSWORD" \
+            "$WEBDAV_URL/$WEBDAV_DIR/version-info.json"
+          
+          # 更新最新版本链接
+          echo "🔗 更新最新版本链接..."
+          curl -T "danmu2rcon-${{ steps.version.outputs.clean_version }}-full.zip" \
+            -u "$WEBDAV_USERNAME:$WEBDAV_PASSWORD" \
+            "$WEBDAV_URL/danmu2rcon/danmu2rcon-latest.zip"
+          
+          curl -T "version-info.json" \
+            -u "$WEBDAV_USERNAME:$WEBDAV_PASSWORD" \
+            "$WEBDAV_URL/danmu2rcon/latest-version.json"
+          
+          echo "✅ WebDAV上传完成！"
+          echo "📍 WebDAV路径: $WEBDAV_URL/$WEBDAV_DIR/"
+
+      - name: 📊 发布总结
+        run: |
+          echo "🎉 版本 ${{ steps.version.outputs.version }} 发布完成！"
+          echo ""
+          echo "📦 发布包信息："
+          ls -lh *.zip
+          echo ""
+          echo "🔗 下载链接："
+          echo "  - GitHub Release: https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.version }}"
+          if [ -n "$WEBDAV_URL" ]; then
+            echo "  - WebDAV: $WEBDAV_URL/danmu2rcon/releases/${{ steps.version.outputs.version }}/"
+            echo "  - 最新版本: $WEBDAV_URL/danmu2rcon/danmu2rcon-latest.zip"
+          fi
+          echo ""
+          echo "🚫 已排除的开发文件："
+          echo "  - create-tag.bat"
+          echo "  - docs/RELEASE.md"
+          echo "  - .github/"
+          echo "  - .git/"
+          echo ""
+          echo "✅ 发布流程执行成功！"
+
+  notify:
+    name: 📢 发布通知
+    runs-on: ubuntu-latest
+    needs: release
+    if: always()
+    
+    steps:
+      - name: 📝 提取版本信息
+        id: version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: ✅ 成功通知
+        if: needs.release.result == 'success'
+        run: |
+          echo "🎉 发布成功！"
+          echo "版本: ${{ steps.version.outputs.version }}"
+          echo "状态: ✅ 已成功发布到 GitHub Release 和 WebDAV"
+
+      - name: ❌ 失败通知
+        if: needs.release.result == 'failure'
+        run: |
+          echo "❌ 发布失败！"
+          echo "版本: ${{ steps.version.outputs.version }}"
+          echo "请检查工作流日志获取详细错误信息"
+          exit 1 
