@@ -108,7 +108,7 @@ danmu2rcon/
 ├── index.js                    # 主服务器文件
 ├── rcon-client.js             # RCON客户端
 ├── event-bridge-server.js     # Event Bridge服务
-├── danmu-listener.js          # 弹幕监听
+├── danma-listener.js          # 弹幕监听
 ├── config.js                  # 配置文件
 ├── package.json               # 项目配置
 ├── public/                    # 静态文件

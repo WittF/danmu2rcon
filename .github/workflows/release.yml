@@ -77,7 +77,7 @@ jobs:
           cp -v \
             index.js \
             rcon-client.js \
-            danmu-listener.js \
+            danma-listener.js \
             event-bridge-server.js \
             config.js \
             package.json \
