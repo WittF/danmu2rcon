@@ -45,8 +45,8 @@
 
 1. **下载项目**
    ```bash
-   git clone https://github.com/WittF/danmu2rcon.git
-   cd danmu2rcon
+   git clone https://github.com/WittF/danma2rcon.git
+   cd danma2rcon
    ```
 
 2. **安装依赖**
@@ -56,8 +56,8 @@
 
 3. **启动系统**
    ```bash
-   # Windows用户可以双击
-   start.bat
+   # 使用 npm 启动
+   npm start
    
    # 或者手动启动
    node index.js
@@ -267,8 +267,8 @@ npm start
 
 ### 开发环境设置
 ```bash
-git clone https://github.com/WittF/danmu2rcon.git
-cd danmu2rcon
+git clone https://github.com/WittF/danma2rcon.git
+cd danma2rcon
 npm install
 npm run dev  # 开发模式启动
 ```

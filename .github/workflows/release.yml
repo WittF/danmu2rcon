@@ -86,7 +86,6 @@ jobs:
             LICENSE \
             CONTRIBUTING.md \
             CHANGELOG.md \
-            start.bat \
             favicon.ico \
             release-temp/danmu2rcon-${{ steps.version.outputs.clean_version }}/
           
@@ -149,7 +148,7 @@ jobs:
             ### 🚀 快速开始
             1. 下载完整版本
             2. 解压到任意目录
-            3. Windows用户双击 `start.bat`，其他系统运行 `node index.js`
+            3. 运行 `node index.js`
             4. 访问 http://localhost:3000 进行配置
 
             ### 📋 系统要求

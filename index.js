@@ -1,6 +1,6 @@
 const express = require('express');
 const RconClient = require('./rcon-client');
-const DanmuListener = require('./danmu-listener');
+const DanmuListener = require('./danma-listener');
 const EventBridgeServer = require('./event-bridge-server');
 const config = require('./config');
 const fs = require('fs');
