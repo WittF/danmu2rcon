@@ -135,12 +135,12 @@ jobs:
 
       - name: 🎯 创建 GitHub Release
         id: create_release
-        uses: actions/create-release@v1
+        uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ steps.version.outputs.version }}
-          release_name: 🎮 Danmu2RCON ${{ steps.version.outputs.version }}
+          name: 🎮 Danmu2RCON ${{ steps.version.outputs.version }}
           body: |
             ## 🎉 版本 ${{ steps.version.outputs.version }} 发布
 
@@ -169,28 +169,11 @@ jobs:
 
             ---
             ⭐ 如果这个项目对您有帮助，请给个星标支持！
+          files: |
+            danmu2rcon-${{ steps.version.outputs.clean_version }}-full.zip
+            danmu2rcon-${{ steps.version.outputs.clean_version }}-source.zip
           draft: false
           prerelease: false
-
-      - name: ⬆️ 上传完整版本到 Release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./danmu2rcon-${{ steps.version.outputs.clean_version }}-full.zip
-          asset_name: danmu2rcon-${{ steps.version.outputs.clean_version }}-full.zip
-          asset_content_type: application/zip
-
-      - name: ⬆️ 上传源码版本到 Release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./danmu2rcon-${{ steps.version.outputs.clean_version }}-source.zip
-          asset_name: danmu2rcon-${{ steps.version.outputs.clean_version }}-source.zip
-          asset_content_type: application/zip
 
       - name: 🌐 上传到 WebDAV 服务器
         if: env.WEBDAV_URL != ''
