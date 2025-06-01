@@ -86,7 +86,6 @@ jobs:
             LICENSE \
             CONTRIBUTING.md \
             CHANGELOG.md \
-            favicon.png \
             release-temp/danmu2rcon-${{ steps.version.outputs.clean_version }}/
           
           # 复制public目录（如果存在）
