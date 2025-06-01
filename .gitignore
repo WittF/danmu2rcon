@@ -1,0 +1,91 @@
+# 依赖包
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# 运行时数据
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# 目录
+.tmp/
+.cache/
+.sass-cache/
+
+# 覆盖率目录
+lib-cov/
+coverage/
+.nyc_output/
+
+# 编译器
+.grunt/
+bower_components/
+
+# 可选REPL历史
+.node_repl_history
+
+# Yarn 包管理器
+.yarn-integrity
+
+# dotenv环境变量文件
+.env
+.env.test
+.env.production
+
+# parcel-bundler缓存
+.cache/
+.parcel-cache/
+
+# Next.js构建输出
+.next/
+out/
+
+# Nuxt.js构建输出
+.nuxt/
+dist/
+
+# Gatsby文件
+.cache/
+public/
+
+# 编辑器和IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 操作系统生成的文件
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# 日志文件
+*.log
+logs/
+
+# 临时文件
+*.tmp
+*.temp
+
+# 配置备份
+config.js.backup
+config.js.bak
+
+# Windows相关
+*.exe
+*.msi
+
+# 压缩文件
+*.zip
+*.rar
+*.7z
+*.tar.gz 
