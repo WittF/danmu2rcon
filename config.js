@@ -1,9 +1,9 @@
 // 配置文件
 module.exports = {
   "rcon": {
-    "host": "202.189.15.130",
-    "port": 25901,
-    "password": "cnmcnmcnm"
+    "host": "127.0.0.1",
+    "port": 25575,
+    "password": "Rcon@PSWD"
   },
   "triggerMessage": "666",
   "eventSettings": {
