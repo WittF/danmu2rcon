@@ -10,9 +10,9 @@ permissions:
   discussions: write
 
 env:
-  WEBDAV_URL: ${{ secrets.WEBDAV_URL }}
-  WEBDAV_USERNAME: ${{ secrets.WEBDAV_USERNAME }}
-  WEBDAV_PASSWORD: ${{ secrets.WEBDAV_PASSWORD }}
+  WEBDAV_URL: ${{ vars.WEBDAV_URL }}
+  WEBDAV_USERNAME: ${{ vars.WEBDAV_USERNAME }}
+  WEBDAV_PASSWORD: ${{ vars.WEBDAV_PASSWORD }}
 
 jobs:
   release:
