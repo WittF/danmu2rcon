@@ -86,13 +86,17 @@ jobs:
             LICENSE \
             CONTRIBUTING.md \
             CHANGELOG.md \
-            favicon.ico \
+            favicon.png \
             release-temp/danmu2rcon-${{ steps.version.outputs.clean_version }}/
           
           # 复制public目录（如果存在）
           if [ -d "public" ]; then
             echo "📁 复制public目录..."
             cp -r public release-temp/danmu2rcon-${{ steps.version.outputs.clean_version }}/
+            # 复制 favicon.png 到根目录
+            if [ -f "public/favicon.png" ]; then
+              cp public/favicon.png release-temp/danmu2rcon-${{ steps.version.outputs.clean_version }}/favicon.png
+            fi
           fi
           
           # 显示排除的开发文件
