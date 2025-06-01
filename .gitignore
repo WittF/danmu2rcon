@@ -115,12 +115,11 @@ Desktop.ini
 # 项目特定文件
 config.backup.js
 *.backup
-
-# 发布相关临时文件
 release-temp/
 *.zip
 version-info.json
 current_changelog.txt
+create-tag.bat
 
 # 测试文件
 test-output/
@@ -133,6 +132,7 @@ yarn-debug.log*
 yarn-error.log*
 
 # 环境变量
+.env
 .env.local
 .env.*.local
 
@@ -158,14 +158,6 @@ tmp/
 temp/
 .tmp/
 .temp/
-
-# 项目特定文件
-config.backup.js
-*.backup
-release-temp/
-*.zip
-version-info.json
-current_changelog.txt
 
 # 调试文件
 debug.log
