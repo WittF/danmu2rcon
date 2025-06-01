@@ -1,4 +1,4 @@
-const Rcon = require('rcon');
+const { Rcon } = require('rcon-client');
 const config = require('./config');
 
 class RconClient {
@@ -17,55 +17,41 @@ class RconClient {
       return Promise.resolve();
     }
 
-    return new Promise((resolve, reject) => {
+    try {
       console.log(`[RCON] 正在连接到 ${config.rcon.host}:${config.rcon.port}...`);
       
-      this.rcon = new Rcon(config.rcon.host, config.rcon.port, config.rcon.password, {
-        tcp: true,
-        challenge: false
+      this.rcon = new Rcon({
+        host: config.rcon.host,
+        port: config.rcon.port,
+        password: config.rcon.password,
+        timeout: 5000
       });
 
-      this.rcon.on('auth', () => {
-        console.log('[RCON] ✅ 连接认证成功');
-        this.isConnected = true;
-        this.retryCount = 0;
-        resolve();
-      });
-
-      this.rcon.on('response', (str) => {
-        console.log(`[RCON] 服务器响应: ${str}`);
-      });
-
-      this.rcon.on('error', (err) => {
-        console.error(`[RCON] ❌ 连接错误: ${err.message}`);
-        this.isConnected = false;
-        
-        if (this.retryCount < this.maxRetries) {
-          this.retryCount++;
-          console.log(`[RCON] 🔄 ${this.reconnectDelay/1000}秒后进行第${this.retryCount}次重连...`);
-          setTimeout(() => {
-            this.connect().catch(() => {}); // 静默处理重连错误
-          }, this.reconnectDelay);
-        }
-        
-        reject(err);
-      });
-
-      this.rcon.on('end', () => {
-        console.log('[RCON] 连接已断开');
-        this.isConnected = false;
-      });
-
-      // 建立连接
-      this.rcon.connect();
-    });
+      await this.rcon.connect();
+      this.isConnected = true;
+      this.retryCount = 0;
+      console.log('[RCON] ✅ 连接认证成功');
+      
+    } catch (error) {
+      console.error(`[RCON] ❌ 连接错误: ${error.message}`);
+      this.isConnected = false;
+      
+      if (this.retryCount < this.maxRetries) {
+        this.retryCount++;
+        console.log(`[RCON] 🔄 ${this.reconnectDelay/1000}秒后进行第${this.retryCount}次重连...`);
+        await new Promise(resolve => setTimeout(resolve, this.reconnectDelay));
+        return this.connect();
+      }
+      
+      throw error;
+    }
   }
 
   // 断开连接
-  disconnect() {
+  async disconnect() {
     if (this.rcon && this.isConnected) {
       console.log('[RCON] 断开连接...');
-      this.rcon.disconnect();
+      await this.rcon.end();
       this.isConnected = false;
     }
   }
@@ -76,22 +62,20 @@ class RconClient {
       throw new Error('RCON未连接，无法发送命令');
     }
 
-    return new Promise((resolve, reject) => {
+    try {
       console.log(`[RCON] 发送命令: ${command}`);
+      const response = await this.rcon.send(command);
+      console.log(`[RCON] ✅ 命令执行成功`);
       
-      this.rcon.send(command, (err, res) => {
-        if (err) {
-          console.error(`[RCON] 命令执行失败: ${err.message}`);
-          reject(err);
-        } else {
-          console.log(`[RCON] ✅ 命令执行成功`);
-          if (res) {
-            console.log(`[RCON] 响应: ${res}`);
-          }
-          resolve(res);
-        }
-      });
-    });
+      if (response && response.trim() !== '') {
+        console.log(`[RCON] 响应: ${response}`);
+      }
+      
+      return response;
+    } catch (error) {
+      console.error(`[RCON] 命令执行失败: ${error.message}`);
+      throw error;
+    }
   }
 
   // 执行事件触发命令（支持多命令结构）
@@ -140,6 +124,34 @@ class RconClient {
       port: config.rcon.port,
       retryCount: this.retryCount
     };
+  }
+
+  // 诊断RCON连接问题
+  async diagnoseConnection() {
+    console.log('[RCON] 开始诊断连接问题...');
+    console.log(`[RCON] 连接目标: ${config.rcon.host}:${config.rcon.port}`);
+    console.log(`[RCON] 当前状态: ${this.isConnected ? '已连接' : '未连接'}`);
+    
+    if (!this.isConnected) {
+      console.log('[RCON] ❌ RCON未连接，请检查：');
+      console.log('[RCON]   1. Minecraft服务器是否运行');
+      console.log('[RCON]   2. server.properties中enable-rcon=true');
+      console.log('[RCON]   3. rcon.port=' + config.rcon.port);
+      console.log('[RCON]   4. rcon.password与配置是否一致');
+      console.log('[RCON]   5. 防火墙是否允许端口通信');
+      return false;
+    }
+    
+    try {
+      // 测试简单命令
+      console.log('[RCON] 测试基本命令...');
+      await this.sendCommand('/list');
+      console.log('[RCON] ✅ 基本命令测试通过');
+      return true;
+    } catch (error) {
+      console.log('[RCON] ❌ 基本命令测试失败:', error.message);
+      return false;
+    }
   }
 }
 
