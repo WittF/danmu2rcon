@@ -36,6 +36,16 @@
 
 ## 🚀 快速开始
 
+### 📥 下载方式
+
+#### GitHub Release（国际用户推荐）
+- 前往 [GitHub Releases](https://github.com/WittF/danmu2rcon/releases) 下载最新版本
+
+#### 中国境内镜像（国内用户推荐）
+- **镜像下载**：https://pan.wittf.ink/s/ekAfp/
+- **注意**：如果提示"无权限访问"，请自行注册账号后下载
+- 镜像同步可能略有延迟，建议优先使用最新版本
+
 ### 系统要求
 - Node.js 16.0+
 - Minecraft服务器（开启RCON）
@@ -45,8 +55,11 @@
 
 1. **下载项目**
    ```bash
-   git clone https://github.com/WittF/danmu2rcon.git
-   cd danmu2rcon
+   # 从GitHub克隆（需要Git）
+   git clone https://github.com/WittF/danma2rcon.git
+   cd danma2rcon
+   
+   # 或者直接下载压缩包解压使用
    ```
 
 2. **安装依赖**
