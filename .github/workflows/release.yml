@@ -188,16 +188,12 @@ jobs:
           sudo apt-get update && sudo apt-get install -y curl
           
           # 创建WebDAV目录
-          WEBDAV_DIR="danmu2rcon/releases/${{ steps.version.outputs.version }}"
+          WEBDAV_DIR="releases/${{ steps.version.outputs.version }}"
           
           echo "📁 创建远程目录: $WEBDAV_DIR"
           curl -X MKCOL \
             -u "$WEBDAV_USERNAME:$WEBDAV_PASSWORD" \
-            "$WEBDAV_URL/danmu2rcon/" || true
-          
-          curl -X MKCOL \
-            -u "$WEBDAV_USERNAME:$WEBDAV_PASSWORD" \
-            "$WEBDAV_URL/danmu2rcon/releases/" || true
+            "$WEBDAV_URL/releases/" || true
           
           curl -X MKCOL \
             -u "$WEBDAV_USERNAME:$WEBDAV_PASSWORD" \
@@ -249,11 +245,11 @@ jobs:
           echo "🔗 更新最新版本链接..."
           curl -T "danmu2rcon-${{ steps.version.outputs.clean_version }}-full.zip" \
             -u "$WEBDAV_USERNAME:$WEBDAV_PASSWORD" \
-            "$WEBDAV_URL/danmu2rcon/danmu2rcon-latest.zip"
+            "$WEBDAV_URL/danmu2rcon-latest.zip"
           
           curl -T "version-info.json" \
             -u "$WEBDAV_USERNAME:$WEBDAV_PASSWORD" \
-            "$WEBDAV_URL/danmu2rcon/latest-version.json"
+            "$WEBDAV_URL/latest-version.json"
           
           echo "✅ WebDAV上传完成！"
           echo "📍 WebDAV路径: $WEBDAV_URL/$WEBDAV_DIR/"
@@ -268,8 +264,8 @@ jobs:
           echo "🔗 下载链接："
           echo "  - GitHub Release: https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.version }}"
           if [ -n "$WEBDAV_URL" ]; then
-            echo "  - WebDAV: $WEBDAV_URL/danmu2rcon/releases/${{ steps.version.outputs.version }}/"
-            echo "  - 最新版本: $WEBDAV_URL/danmu2rcon/danmu2rcon-latest.zip"
+            echo "  - WebDAV: $WEBDAV_URL/releases/${{ steps.version.outputs.version }}/"
+            echo "  - 最新版本: $WEBDAV_URL/danmu2rcon-latest.zip"
           fi
           echo ""
           echo "🚫 已排除的开发文件："
