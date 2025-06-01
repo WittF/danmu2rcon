@@ -120,6 +120,8 @@ release-temp/
 version-info.json
 current_changelog.txt
 create-tag.bat
+docs/
+RELEASE.md
 
 # 测试文件
 test-output/
