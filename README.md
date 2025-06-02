@@ -295,7 +295,8 @@ npm run dev  # 开发模式启动
 
 ## 🙏 致谢
 
-- [LAPLACE Chat](https://chat.laplace.live/) - 提供优秀的弹幕客户端和Event Bridge服务
+- 籽岷 - 提供建议
+- [LAPLACE Chat](https://chat.laplace.live/) - 提供优秀的弹幕客户端和[Event Bridge](https://subspace.institute/docs/laplace-chat/event-bridge)服务
 - 所有贡献者和用户的支持
 
 ---
