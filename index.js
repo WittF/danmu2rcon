@@ -2182,7 +2182,58 @@ app.get('/', (req, res) => {
           });
         }
 
+        // 收集当前表单数据的函数
+        function collectCurrentFormData() {
+          const formData = {};
+          
+          // 收集命令规则数据
+          formData.commandRules = [];
+          const ruleElements = document.querySelectorAll('#command-rules-container .command-rule');
+          ruleElements.forEach((ruleEl, index) => {
+            const nameInput = ruleEl.querySelector('input[name="commandRules[' + index + '].name"]');
+            const countInput = ruleEl.querySelector('input[name="commandRules[' + index + '].count"]');
+            const enabledInput = ruleEl.querySelector('input[name="commandRules[' + index + '].enabled"]');
+
+            if (nameInput && countInput) {
+              const rule = {
+                name: nameInput.value,
+                count: parseInt(countInput.value),
+                enabled: enabledInput ? enabledInput.checked : true,
+                commands: []
+              };
+
+              // 收集该规则下的所有命令
+              const commandElements = ruleEl.querySelectorAll('.sub-command');
+              commandElements.forEach((cmdEl, cmdIndex) => {
+                const cmdNameInput = cmdEl.querySelector('input[name="commandRules[' + index + '].commands[' + cmdIndex + '].name"]');
+                const cmdCommandInput = cmdEl.querySelector('textarea[name="commandRules[' + index + '].commands[' + cmdIndex + '].command"]');
+                const cmdEnabledInput = cmdEl.querySelector('input[name="commandRules[' + index + '].commands[' + cmdIndex + '].enabled"]');
+
+                if (cmdNameInput && cmdCommandInput) {
+                  rule.commands.push({
+                    name: cmdNameInput.value,
+                    command: cmdCommandInput.value,
+                    enabled: cmdEnabledInput ? cmdEnabledInput.checked : true
+                  });
+                }
+              });
+
+              formData.commandRules.push(rule);
+            }
+          });
+          
+          return formData;
+        }
+
         function addCommandRule() {
+          // 先收集当前表单数据
+          const currentFormData = collectCurrentFormData();
+          
+          // 更新currentConfig为当前表单数据
+          if (currentFormData.commandRules.length > 0) {
+            currentConfig.commandRules = currentFormData.commandRules;
+          }
+          
           const newRule = {
             name: '新命令规则',
             count: 1,
@@ -2204,11 +2255,26 @@ app.get('/', (req, res) => {
             showNotification('至少需要保留一个命令规则', 'warning');
             return;
           }
+          
+          // 先收集当前表单数据
+          const currentFormData = collectCurrentFormData();
+          if (currentFormData.commandRules.length > 0) {
+            currentConfig.commandRules = currentFormData.commandRules;
+          }
+          
           currentConfig.commandRules.splice(index, 1);
           renderCommandRules(currentConfig.commandRules);
         }
 
         function addSubCommand(ruleIndex) {
+          // 先收集当前表单数据
+          const currentFormData = collectCurrentFormData();
+          
+          // 更新currentConfig为当前表单数据
+          if (currentFormData.commandRules.length > 0) {
+            currentConfig.commandRules = currentFormData.commandRules;
+          }
+          
           const newCommand = {
             name: '新命令',
             enabled: true,
@@ -2227,6 +2293,13 @@ app.get('/', (req, res) => {
             showNotification('每个规则至少需要保留一个命令', 'warning');
             return;
           }
+          
+          // 先收集当前表单数据
+          const currentFormData = collectCurrentFormData();
+          if (currentFormData.commandRules.length > 0) {
+            currentConfig.commandRules = currentFormData.commandRules;
+          }
+          
           currentConfig.commandRules[ruleIndex].commands.splice(commandIndex, 1);
           renderCommandRules(currentConfig.commandRules);
         }

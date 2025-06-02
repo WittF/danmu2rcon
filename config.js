@@ -46,72 +46,13 @@ module.exports = {
   },
   "commandRules": [
     {
-      "name": "僵尸召唤",
-      "count": 1,
-      "enabled": true,
-      "commands": [
-        {
-          "name": "生成僵尸",
-          "command": "/execute at @a[name=\"WittF\"] run summon minecraft:zombie ~ ~ ~",
-          "enabled": true
-        },
-        {
-          "name": "触发消息",
-          "command": "/tellraw @a {\"text\":\"💫 弹幕触发！召唤了僵尸！\",\"color\":\"green\"}",
-          "enabled": true
-        },
-        {
-          "name": "庆祝音效",
-          "command": "/playsound minecraft:entity.experience_orb.pickup master @a ~ ~ ~ 0.8 1.0",
-          "enabled": true
-        }
-      ]
-    },
-    {
-      "name": "卫道士召唤",
-      "count": 5,
-      "enabled": true,
-      "commands": [
-        {
-          "name": "生成卫道士",
-          "command": "/execute at @a[name=\"WittF\"] run summon minecraft:vindicator ~ ~ ~",
-          "enabled": true
-        },
-        {
-          "name": "触发消息",
-          "command": "/tellraw @a {\"text\":\"⚔️ 弹幕触发！召唤了卫道士！\",\"color\":\"red\"}",
-          "enabled": true
-        },
-        {
-          "name": "特殊音效",
-          "command": "/playsound minecraft:entity.vindicator.ambient master @a ~ ~ ~ 1.0 1.0",
-          "enabled": true
-        }
-      ]
-    },
-    {
-      "name": "坚守者召唤",
+      "name": "随机怪物召唤",
       "count": 10,
       "enabled": true,
       "commands": [
         {
-          "name": "生成坚守者",
-          "command": "/execute at @a[name=\"WittF\"] run summon minecraft:warden ~ ~ ~",
-          "enabled": true
-        },
-        {
-          "name": "触发消息",
-          "command": "/tellraw @a {\"text\":\"💀 弹幕触发！召唤了恐怖的坚守者！\",\"color\":\"dark_purple\",\"bold\":true}",
-          "enabled": true
-        },
-        {
-          "name": "震撼音效",
-          "command": "/playsound minecraft:entity.warden.emerge master @a ~ ~ ~ 1.0 0.8",
-          "enabled": true
-        },
-        {
-          "name": "粒子效果",
-          "command": "/execute at @a run particle minecraft:sculk_soul ~ ~1 ~ 2 2 2 0.1 50",
+          "name": "随机怪物生成",
+          "command": "RANDOM_MONSTER_SPAWN",
           "enabled": true
         }
       ]
