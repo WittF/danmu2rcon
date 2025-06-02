@@ -362,9 +362,60 @@ class EventBridgeServer {
   }
 
   // 更新认证令牌
-  updateAuthToken(token) {
-    this.authToken = token;
-    console.log(`[Event Bridge Server] 认证令牌已更新: ${token ? '已设置' : '已清除'}`);
+  updateAuthToken(newToken) {
+    this.authToken = newToken;
+    console.log(`[Event Bridge] 认证令牌已更新: ${newToken ? '已设置' : '已清除'}`);
+  }
+
+  // 热更新配置
+  async updateConfig(newConfig) {
+    console.log('[Event Bridge] 🔄 检查配置变更...');
+    
+    const oldPort = this.port;
+    const oldHost = this.host;
+    const oldAuthToken = this.authToken;
+    
+    const newPort = newConfig.eventBridge.port;
+    const newHost = newConfig.eventBridge.host;
+    const newAuthToken = newConfig.eventBridge.authToken;
+
+    // 检查是否需要重启服务
+    const needRestart = oldPort !== newPort || oldHost !== newHost;
+    
+    if (needRestart) {
+      console.log('[Event Bridge] 🔄 检测到端口或地址变更，重启服务...');
+      console.log(`[Event Bridge] 端口: ${oldPort} -> ${newPort}`);
+      console.log(`[Event Bridge] 地址: ${oldHost} -> ${newHost}`);
+      
+      // 停止现有服务
+      if (this.isRunning) {
+        this.stop();
+      }
+      
+      // 更新配置
+      this.port = newPort;
+      this.host = newHost;
+      this.authToken = newAuthToken;
+      
+      // 重新启动服务
+      try {
+        this.start();
+        console.log('[Event Bridge] ✅ 服务重启成功');
+        return true;
+      } catch (error) {
+        console.error('[Event Bridge] ❌ 服务重启失败:', error.message);
+        return false;
+      }
+    } else if (oldAuthToken !== newAuthToken) {
+      // 仅更新认证令牌
+      console.log('[Event Bridge] 🔑 更新认证令牌...');
+      this.updateAuthToken(newAuthToken);
+      console.log('[Event Bridge] ✅ 认证令牌更新完成');
+      return true;
+    } else {
+      console.log('[Event Bridge] ℹ️ Event Bridge配置无变化，跳过更新');
+      return true;
+    }
   }
 }
 

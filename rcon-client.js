@@ -310,6 +310,29 @@ class RconClient {
     this.isConnected = false;
   }
 
+  // 销毁连接池（专用于配置更新）
+  async destroyPool() {
+    if (this.rconPool && this.rconPool.length > 0) {
+      console.log('[RCON] 🔄 销毁现有连接池...');
+      
+      const promises = this.rconPool.map(async (poolItem, index) => {
+        try {
+          if (poolItem.connection) {
+            await poolItem.connection.end();
+            console.log(`[RCON] 连接池 #${index} 已销毁`);
+          }
+        } catch (error) {
+          console.error(`[RCON] 销毁连接池 #${index} 时出错: ${error.message}`);
+        }
+      });
+      
+      await Promise.all(promises);
+      this.rconPool = [];
+      this.poolInitialized = false;
+      console.log('[RCON] ♻️ 连接池已完全销毁');
+    }
+  }
+
   // 发送命令
   async sendCommand(command) {
     if (!this.isConnected) {
@@ -552,6 +575,54 @@ class RconClient {
     } catch (error) {
       console.log('[RCON] ❌ 基本命令测试失败:', error.message);
       return false;
+    }
+  }
+
+  // 热更新配置
+  async updateConfig(newConfig) {
+    const oldConfig = {
+      host: config.rcon.host,
+      port: config.rcon.port,
+      password: config.rcon.password
+    };
+
+    const newRconConfig = {
+      host: newConfig.rcon.host,
+      port: newConfig.rcon.port,
+      password: newConfig.rcon.password
+    };
+
+    // 检查RCON配置是否发生变化
+    const rconChanged = 
+      oldConfig.host !== newRconConfig.host ||
+      oldConfig.port !== newRconConfig.port ||
+      oldConfig.password !== newRconConfig.password;
+
+    if (rconChanged) {
+      console.log('[RCON] 🔄 检测到RCON配置变更，重新连接...');
+      
+      // 断开现有连接
+      if (this.isConnected) {
+        await this.disconnect();
+      }
+
+      // 清空连接池
+      if (this.poolInitialized) {
+        await this.destroyPool();
+      }
+
+      // 尝试使用新配置连接
+      try {
+        await this.connect();
+        console.log('[RCON] ✅ RCON配置热更新成功');
+        return true;
+      } catch (error) {
+        console.error('[RCON] ❌ RCON配置热更新失败:', error.message);
+        return false;
+      }
+    } else {
+      console.log('[RCON] ℹ️ RCON配置无变化，跳过重连');
+      return true;
     }
   }
 }

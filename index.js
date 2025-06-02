@@ -123,7 +123,7 @@ app.get('/api/config', (req, res) => {
 });
 
 // 更新配置
-app.post('/api/config', (req, res) => {
+app.post('/api/config', async (req, res) => {
   try {
     const newConfig = req.body;
     
@@ -137,6 +137,8 @@ app.post('/api/config', (req, res) => {
       return res.status(400).json({ success: false, message: '怪物规则配置不正确' });
     }
     
+    console.log('🔄 开始配置热更新...');
+    
     // 更新内存中的配置
     Object.assign(config, newConfig);
     
@@ -145,27 +147,61 @@ app.post('/api/config', (req, res) => {
 module.exports = ${JSON.stringify(config, null, 2)};`;
     
     fs.writeFileSync(path.join(__dirname, 'config.js'), configContent, 'utf8');
+    console.log('💾 配置文件已保存');
     
-    // 重新应用配置
-    if (rconClient.isConnected) {
-      rconClient.disconnect();
-    }
-    danmuListener.stop();
-    eventBridgeServer.stop();
+    // 执行各模块的热更新
+    const updateResults = [];
     
-    // 重启相关服务
-    setTimeout(async () => {
-      try {
-        await rconClient.connect();
-        danmuListener.start();
-        eventBridgeServer.start();
-      } catch (error) {
-        console.error('重启服务时出错:', error.message);
+    try {
+      // 1. 更新RCON客户端配置
+      console.log('📡 更新RCON配置...');
+      const rconResult = await rconClient.updateConfig(newConfig);
+      updateResults.push({ module: 'RCON', success: rconResult });
+      
+      // 2. 更新弹幕监听器配置
+      console.log('🎯 更新弹幕监听配置...');
+      const danmuResult = danmuListener.updateConfig(newConfig);
+      updateResults.push({ module: '弹幕监听', success: danmuResult });
+      
+      // 3. 更新Event Bridge配置
+      console.log('🌉 更新Event Bridge配置...');
+      const bridgeResult = await eventBridgeServer.updateConfig(newConfig);
+      updateResults.push({ module: 'Event Bridge', success: bridgeResult });
+      
+      // 检查所有更新是否成功
+      const allSuccess = updateResults.every(result => result.success);
+      const failedModules = updateResults.filter(result => !result.success).map(result => result.module);
+      
+      if (allSuccess) {
+        console.log('✅ 配置热更新成功，所有模块已应用新配置');
+        res.json({ 
+          success: true, 
+          message: '配置已更新并热重载，无需重启服务',
+          hotReload: true,
+          updateResults: updateResults
+        });
+      } else {
+        console.log(`⚠️ 配置热更新部分成功，失败模块: ${failedModules.join(', ')}`);
+        res.json({ 
+          success: true, 
+          message: `配置已更新，部分模块热重载失败: ${failedModules.join(', ')}`,
+          hotReload: true,
+          updateResults: updateResults,
+          warnings: failedModules
+        });
       }
-    }, 1000);
+      
+    } catch (error) {
+      console.error('❌ 配置热更新过程中出错:', error.message);
+      res.status(500).json({ 
+        success: false, 
+        message: '配置热更新失败: ' + error.message,
+        hotReload: false
+      });
+    }
     
-    res.json({ success: true, message: '配置已更新并重启服务' });
   } catch (error) {
+    console.error('❌ 配置保存失败:', error.message);
     res.status(500).json({ success: false, message: '保存配置失败: ' + error.message });
   }
 });
@@ -2035,6 +2071,31 @@ app.get('/', (req, res) => {
 
         // 配置管理函数
         let currentConfig = {};
+        let hasUnsavedChanges = false;
+
+        // 监听表单变化，提示用户有未保存的更改
+        function markConfigAsChanged() {
+          hasUnsavedChanges = true;
+          updateSaveButtonState();
+        }
+
+        function markConfigAsSaved() {
+          hasUnsavedChanges = false;
+          updateSaveButtonState();
+        }
+
+        function updateSaveButtonState() {
+          const saveButton = document.querySelector('.modal-footer .btn-primary');
+          if (saveButton) {
+            if (hasUnsavedChanges) {
+              saveButton.textContent = '💾 保存配置 *';
+              saveButton.style.background = 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)';
+            } else {
+              saveButton.textContent = '💾 保存配置';
+              saveButton.style.background = '';
+            }
+          }
+        }
 
         function openConfigModal() {
           fetch('/api/config')
@@ -2043,12 +2104,37 @@ app.get('/', (req, res) => {
               currentConfig = config;
               populateConfigForm(config);
               document.getElementById('configModal').style.display = 'block';
+              
+              // 重置未保存状态
+              markConfigAsSaved();
+              
+              // 添加表单变化监听
+              setTimeout(() => {
+                const configForm = document.getElementById('configForm');
+                if (configForm) {
+                  configForm.addEventListener('input', markConfigAsChanged);
+                  configForm.addEventListener('change', markConfigAsChanged);
+                }
+              }, 100);
             })
             .catch(err => showNotification('加载配置失败', 'error'));
         }
 
         function closeConfigModal() {
+          if (hasUnsavedChanges) {
+            if (!confirm('您有未保存的更改，确定要关闭吗？')) {
+              return;
+            }
+          }
+          
           document.getElementById('configModal').style.display = 'none';
+          
+          // 移除事件监听器
+          const configForm = document.getElementById('configForm');
+          if (configForm) {
+            configForm.removeEventListener('input', markConfigAsChanged);
+            configForm.removeEventListener('change', markConfigAsChanged);
+          }
         }
 
         function populateConfigForm(config) {
@@ -2220,10 +2306,68 @@ app.get('/', (req, res) => {
 
         // 收集当前表单数据的函数
         function collectCurrentFormData() {
-          const formData = {};
+          const formData = new FormData(document.getElementById('configForm'));
+          const config = {};
+          
+          // 收集RCON配置
+          config.rcon = {
+            host: formData.get('rcon.host') || currentConfig.rcon.host,
+            port: parseInt(formData.get('rcon.port')) || currentConfig.rcon.port,
+            password: formData.get('rcon.password') || currentConfig.rcon.password
+          };
+
+          // 收集基本设置
+          config.triggerMessage = formData.get('triggerMessage') || currentConfig.triggerMessage;
+
+          // 收集Event Bridge配置
+          config.eventBridge = {
+            port: parseInt(formData.get('eventBridge.port')) || currentConfig.eventBridge.port,
+            host: formData.get('eventBridge.host') || currentConfig.eventBridge.host,
+            authToken: formData.get('eventBridge.authToken') || currentConfig.eventBridge.authToken
+          };
+
+          // 收集事件设置（保持开关状态）
+          config.eventSettings = {
+            superChatEnabled: currentConfig.eventSettings.superChatEnabled,
+            guardPurchaseEnabled: currentConfig.eventSettings.guardPurchaseEnabled,
+            superChatCommands: [],
+            guardCommands: []
+          };
+
+          // 收集SuperChat命令
+          const superChatElements = document.querySelectorAll('#superchat-commands-container .command-rule');
+          superChatElements.forEach((cmdEl, index) => {
+            const nameInput = cmdEl.querySelector('input[name="superChatCommands[' + index + '].name"]');
+            const commandInput = cmdEl.querySelector('textarea[name="superChatCommands[' + index + '].command"]');
+            const enabledInput = cmdEl.querySelector('input[name="superChatCommands[' + index + '].enabled"]');
+
+            if (nameInput && commandInput) {
+              config.eventSettings.superChatCommands.push({
+                name: nameInput.value,
+                command: commandInput.value,
+                enabled: enabledInput ? enabledInput.checked : true
+              });
+            }
+          });
+
+          // 收集舰长命令
+          const guardElements = document.querySelectorAll('#guard-commands-container .command-rule');
+          guardElements.forEach((cmdEl, index) => {
+            const nameInput = cmdEl.querySelector('input[name="guardCommands[' + index + '].name"]');
+            const commandInput = cmdEl.querySelector('textarea[name="guardCommands[' + index + '].command"]');
+            const enabledInput = cmdEl.querySelector('input[name="guardCommands[' + index + '].enabled"]');
+
+            if (nameInput && commandInput) {
+              config.eventSettings.guardCommands.push({
+                name: nameInput.value,
+                command: commandInput.value,
+                enabled: enabledInput ? enabledInput.checked : true
+              });
+            }
+          });
           
           // 收集命令规则数据
-          formData.commandRules = [];
+          config.commandRules = [];
           const ruleElements = document.querySelectorAll('#command-rules-container .command-rule');
           ruleElements.forEach((ruleEl, index) => {
             const nameInput = ruleEl.querySelector('input[name="commandRules[' + index + '].name"]');
@@ -2254,21 +2398,22 @@ app.get('/', (req, res) => {
                 }
               });
 
-              formData.commandRules.push(rule);
+              config.commandRules.push(rule);
             }
           });
+
+          // 保留web服务器配置
+          config.webServer = currentConfig.webServer;
           
-          return formData;
+          return config;
         }
 
         function addCommandRule() {
-          // 先收集当前表单数据
-          const currentFormData = collectCurrentFormData();
+          // 先收集当前表单的所有数据
+          const updatedConfig = collectCurrentFormData();
           
-          // 更新currentConfig为当前表单数据
-          if (currentFormData.commandRules.length > 0) {
-            currentConfig.commandRules = currentFormData.commandRules;
-          }
+          // 完全更新currentConfig为当前表单数据
+          Object.assign(currentConfig, updatedConfig);
           
           const newRule = {
             name: '新命令规则',
@@ -2283,7 +2428,17 @@ app.get('/', (req, res) => {
             ]
           };
           currentConfig.commandRules.push(newRule);
-          renderCommandRules(currentConfig.commandRules);
+          
+          // 重新填充整个表单以保持所有修改
+          populateConfigForm(currentConfig);
+          
+          // 重置保存状态，因为这只是界面操作
+          setTimeout(() => {
+            markConfigAsSaved();
+          }, 50);
+          
+          // 提示用户修改已保留
+          showNotification('✨ 新规则已添加，您的其他修改已保留', 'info');
         }
 
         function removeCommandRule(index) {
@@ -2292,24 +2447,32 @@ app.get('/', (req, res) => {
             return;
           }
           
-          // 先收集当前表单数据
-          const currentFormData = collectCurrentFormData();
-          if (currentFormData.commandRules.length > 0) {
-            currentConfig.commandRules = currentFormData.commandRules;
-          }
+          // 先收集当前表单的所有数据
+          const updatedConfig = collectCurrentFormData();
+          
+          // 完全更新currentConfig为当前表单数据
+          Object.assign(currentConfig, updatedConfig);
           
           currentConfig.commandRules.splice(index, 1);
-          renderCommandRules(currentConfig.commandRules);
+          
+          // 重新填充整个表单以保持所有修改
+          populateConfigForm(currentConfig);
+          
+          // 重置保存状态，因为这只是界面操作
+          setTimeout(() => {
+            markConfigAsSaved();
+          }, 50);
+          
+          // 提示用户修改已保留
+          showNotification('🗑️ 规则已删除，您的其他修改已保留', 'info');
         }
 
         function addSubCommand(ruleIndex) {
-          // 先收集当前表单数据
-          const currentFormData = collectCurrentFormData();
+          // 先收集当前表单的所有数据
+          const updatedConfig = collectCurrentFormData();
           
-          // 更新currentConfig为当前表单数据
-          if (currentFormData.commandRules.length > 0) {
-            currentConfig.commandRules = currentFormData.commandRules;
-          }
+          // 完全更新currentConfig为当前表单数据
+          Object.assign(currentConfig, updatedConfig);
           
           const newCommand = {
             name: '新命令',
@@ -2321,7 +2484,17 @@ app.get('/', (req, res) => {
             currentConfig.commandRules[ruleIndex].commands = [];
           }
           currentConfig.commandRules[ruleIndex].commands.push(newCommand);
-          renderCommandRules(currentConfig.commandRules);
+          
+          // 重新填充整个表单以保持所有修改
+          populateConfigForm(currentConfig);
+          
+          // 重置保存状态，因为这只是界面操作
+          setTimeout(() => {
+            markConfigAsSaved();
+          }, 50);
+          
+          // 提示用户修改已保留
+          showNotification('➕ 命令已添加，您的其他修改已保留', 'info');
         }
 
         function removeSubCommand(ruleIndex, commandIndex) {
@@ -2330,14 +2503,24 @@ app.get('/', (req, res) => {
             return;
           }
           
-          // 先收集当前表单数据
-          const currentFormData = collectCurrentFormData();
-          if (currentFormData.commandRules.length > 0) {
-            currentConfig.commandRules = currentFormData.commandRules;
-          }
+          // 先收集当前表单的所有数据
+          const updatedConfig = collectCurrentFormData();
+          
+          // 完全更新currentConfig为当前表单数据
+          Object.assign(currentConfig, updatedConfig);
           
           currentConfig.commandRules[ruleIndex].commands.splice(commandIndex, 1);
-          renderCommandRules(currentConfig.commandRules);
+          
+          // 重新填充整个表单以保持所有修改
+          populateConfigForm(currentConfig);
+          
+          // 重置保存状态，因为这只是界面操作
+          setTimeout(() => {
+            markConfigAsSaved();
+          }, 50);
+          
+          // 提示用户修改已保留
+          showNotification('🗑️ 命令已删除，您的其他修改已保留', 'info');
         }
 
         function addDanmuTriggerCommand() {
@@ -2363,13 +2546,29 @@ app.get('/', (req, res) => {
         }
 
         function addSuperChatCommand() {
+          // 先收集当前表单的所有数据
+          const updatedConfig = collectCurrentFormData();
+          
+          // 完全更新currentConfig为当前表单数据
+          Object.assign(currentConfig, updatedConfig);
+          
           const newCommand = {
             name: '新SuperChat命令',
             command: '/execute at @a[name="WittF"] run summon minecraft:zombie ~ ~ ~',
             enabled: true
           };
           currentConfig.eventSettings.superChatCommands.push(newCommand);
-          renderSuperChatCommands(currentConfig.eventSettings.superChatCommands);
+          
+          // 重新填充整个表单以保持所有修改
+          populateConfigForm(currentConfig);
+          
+          // 重置保存状态，因为这只是界面操作
+          setTimeout(() => {
+            markConfigAsSaved();
+          }, 50);
+          
+          // 提示用户修改已保留
+          showNotification('💰 SuperChat命令已添加，您的其他修改已保留', 'info');
         }
 
         function removeSuperChatCommand(index) {
@@ -2377,18 +2576,51 @@ app.get('/', (req, res) => {
             showNotification('至少需要保留一个SuperChat命令', 'warning');
             return;
           }
+          
+          // 先收集当前表单的所有数据
+          const updatedConfig = collectCurrentFormData();
+          
+          // 完全更新currentConfig为当前表单数据
+          Object.assign(currentConfig, updatedConfig);
+          
           currentConfig.eventSettings.superChatCommands.splice(index, 1);
-          renderSuperChatCommands(currentConfig.eventSettings.superChatCommands);
+          
+          // 重新填充整个表单以保持所有修改
+          populateConfigForm(currentConfig);
+          
+          // 重置保存状态，因为这只是界面操作
+          setTimeout(() => {
+            markConfigAsSaved();
+          }, 50);
+          
+          // 提示用户修改已保留
+          showNotification('🗑️ SuperChat命令已删除，您的其他修改已保留', 'info');
         }
 
         function addGuardCommand() {
+          // 先收集当前表单的所有数据
+          const updatedConfig = collectCurrentFormData();
+          
+          // 完全更新currentConfig为当前表单数据
+          Object.assign(currentConfig, updatedConfig);
+          
           const newCommand = {
             name: '新舰长命令',
             command: '/execute at @a[name="WittF"] run summon minecraft:zombie ~ ~ ~',
             enabled: true
           };
           currentConfig.eventSettings.guardCommands.push(newCommand);
-          renderGuardCommands(currentConfig.eventSettings.guardCommands);
+          
+          // 重新填充整个表单以保持所有修改
+          populateConfigForm(currentConfig);
+          
+          // 重置保存状态，因为这只是界面操作
+          setTimeout(() => {
+            markConfigAsSaved();
+          }, 50);
+          
+          // 提示用户修改已保留
+          showNotification('⚓ 舰长命令已添加，您的其他修改已保留', 'info');
         }
 
         function removeGuardCommand(index) {
@@ -2396,107 +2628,30 @@ app.get('/', (req, res) => {
             showNotification('至少需要保留一个舰长命令', 'warning');
             return;
           }
+          
+          // 先收集当前表单的所有数据
+          const updatedConfig = collectCurrentFormData();
+          
+          // 完全更新currentConfig为当前表单数据
+          Object.assign(currentConfig, updatedConfig);
+          
           currentConfig.eventSettings.guardCommands.splice(index, 1);
-          renderGuardCommands(currentConfig.eventSettings.guardCommands);
+          
+          // 重新填充整个表单以保持所有修改
+          populateConfigForm(currentConfig);
+          
+          // 重置保存状态，因为这只是界面操作
+          setTimeout(() => {
+            markConfigAsSaved();
+          }, 50);
+          
+          // 提示用户修改已保留
+          showNotification('🗑️ 舰长命令已删除，您的其他修改已保留', 'info');
         }
 
         function saveConfig() {
-          const formData = new FormData(document.getElementById('configForm'));
-          const config = {};
-
-          // 构建配置对象
-          config.rcon = {
-            host: formData.get('rcon.host'),
-            port: parseInt(formData.get('rcon.port')),
-            password: formData.get('rcon.password')
-          };
-
-          config.triggerMessage = formData.get('triggerMessage');
-
-          config.eventBridge = {
-            port: parseInt(formData.get('eventBridge.port')),
-            host: formData.get('eventBridge.host'),
-            authToken: formData.get('eventBridge.authToken') || null
-          };
-
-          // 收集命令规则（支持多命令结构）
-          config.commandRules = [];
-          const ruleElements = document.querySelectorAll('#command-rules-container .command-rule');
-          ruleElements.forEach((ruleEl, index) => {
-            const nameInput = ruleEl.querySelector(\`input[name="commandRules[\${index}].name"]\`);
-            const countInput = ruleEl.querySelector(\`input[name="commandRules[\${index}].count"]\`);
-            const enabledInput = ruleEl.querySelector(\`input[name="commandRules[\${index}].enabled"]\`);
-
-            if (nameInput && countInput) {
-              const rule = {
-                name: nameInput.value,
-                count: parseInt(countInput.value),
-                enabled: enabledInput ? enabledInput.checked : true,
-                commands: []
-              };
-
-              // 收集该规则下的所有命令
-              const commandElements = ruleEl.querySelectorAll('.sub-command');
-              commandElements.forEach((cmdEl, cmdIndex) => {
-                const cmdNameInput = cmdEl.querySelector(\`input[name="commandRules[\${index}].commands[\${cmdIndex}].name"]\`);
-                const cmdCommandInput = cmdEl.querySelector(\`textarea[name="commandRules[\${index}].commands[\${cmdIndex}].command"]\`);
-                const cmdEnabledInput = cmdEl.querySelector(\`input[name="commandRules[\${index}].commands[\${cmdIndex}].enabled"]\`);
-
-                if (cmdNameInput && cmdCommandInput) {
-                  rule.commands.push({
-                    name: cmdNameInput.value,
-                    command: cmdCommandInput.value,
-                    enabled: cmdEnabledInput ? cmdEnabledInput.checked : true
-                  });
-                }
-              });
-
-              config.commandRules.push(rule);
-            }
-          });
-
-          // 构建事件设置
-          config.eventSettings = {
-            superChatEnabled: currentConfig.eventSettings.superChatEnabled,
-            guardPurchaseEnabled: currentConfig.eventSettings.guardPurchaseEnabled,
-            superChatCommands: [],
-            guardCommands: []
-          };
-
-          // 收集SuperChat命令
-          const superChatElements = document.querySelectorAll('#superchat-commands-container .command-rule');
-          superChatElements.forEach((cmdEl, index) => {
-            const nameInput = cmdEl.querySelector(\`input[name="superChatCommands[\${index}].name"]\`);
-            const commandInput = cmdEl.querySelector(\`textarea[name="superChatCommands[\${index}].command"]\`);
-            const enabledInput = cmdEl.querySelector(\`input[name="superChatCommands[\${index}].enabled"]\`);
-
-            if (nameInput && commandInput) {
-              config.eventSettings.superChatCommands.push({
-                name: nameInput.value,
-                command: commandInput.value,
-                enabled: enabledInput ? enabledInput.checked : true
-              });
-            }
-          });
-
-          // 收集舰长命令
-          const guardElements = document.querySelectorAll('#guard-commands-container .command-rule');
-          guardElements.forEach((cmdEl, index) => {
-            const nameInput = cmdEl.querySelector(\`input[name="guardCommands[\${index}].name"]\`);
-            const commandInput = cmdEl.querySelector(\`textarea[name="guardCommands[\${index}].command"]\`);
-            const enabledInput = cmdEl.querySelector(\`input[name="guardCommands[\${index}].enabled"]\`);
-
-            if (nameInput && commandInput) {
-              config.eventSettings.guardCommands.push({
-                name: nameInput.value,
-                command: commandInput.value,
-                enabled: enabledInput ? enabledInput.checked : true
-              });
-            }
-          });
-
-          // 保留现有的web服务器配置
-          config.webServer = currentConfig.webServer;
+          // 使用改进的数据收集函数获取所有配置
+          const config = collectCurrentFormData();
 
           // 发送配置更新请求
           fetch('/api/config', {
@@ -2509,17 +2664,55 @@ app.get('/', (req, res) => {
             .then(response => response.json())
             .then(data => {
               if (data.success) {
-                showNotification(data.message, 'success');
-                closeConfigModal();
-                // 延迟更新状态，等待服务重启
-                setTimeout(() => {
+                // 立即标记为已保存，避免关闭时误报
+                markConfigAsSaved();
+                
+                // 检查是否为热更新
+                if (data.hotReload) {
+                  // 热更新成功
+                  if (data.warnings && data.warnings.length > 0) {
+                    showNotification('⚠️ ' + data.message, 'warning');
+                  } else {
+                    showNotification('🔥 ' + data.message, 'success');
+                  }
+                  
+                  // 显示更新详情
+                  if (data.updateResults) {
+                    data.updateResults.forEach(result => {
+                      const icon = result.success ? '✅' : '❌';
+                      const type = result.success ? 'info' : 'warning';
+                      showNotification(icon + ' ' + result.module + ': ' + (result.success ? '更新成功' : '更新失败'), type);
+                    });
+                  }
+                  
+                  // 延迟关闭模态框，确保状态更新完成
+                  setTimeout(() => {
+                    closeConfigModal();
+                  }, 100);
+                  
+                  // 立即更新状态（无需等待重启）
                   updateRealTimeStats();
-                }, 2000);
+                } else {
+                  // 传统重启模式
+                  showNotification(data.message, 'success');
+                  
+                  // 延迟关闭模态框，确保状态更新完成
+                  setTimeout(() => {
+                    closeConfigModal();
+                  }, 100);
+                  
+                  // 延迟更新状态，等待服务重启
+                  setTimeout(() => {
+                    updateRealTimeStats();
+                  }, 2000);
+                }
               } else {
-                showNotification(data.message, 'error');
+                showNotification('❌ ' + data.message, 'error');
               }
             })
-            .catch(err => showNotification('保存配置失败', 'error'));
+            .catch(err => {
+              showNotification('❌ 保存配置失败', 'error');
+            });
         }
 
         function resetConfig() {

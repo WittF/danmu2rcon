@@ -342,6 +342,48 @@ class DanmuListener {
     };
   }
 
+  // 热更新配置
+  updateConfig(newConfig) {
+    console.log('[弹幕监听] 🔄 应用配置热更新...');
+    
+    // 检查触发消息是否变化
+    if (config.triggerMessage !== newConfig.triggerMessage) {
+      console.log(`[弹幕监听] 触发消息已更新: "${config.triggerMessage}" -> "${newConfig.triggerMessage}"`);
+    }
+
+    // 检查命令规则数量变化
+    const oldRulesCount = config.commandRules ? config.commandRules.length : 0;
+    const newRulesCount = newConfig.commandRules ? newConfig.commandRules.length : 0;
+    if (oldRulesCount !== newRulesCount) {
+      console.log(`[弹幕监听] 命令规则数量已更新: ${oldRulesCount} -> ${newRulesCount}`);
+    }
+
+    // 检查事件设置变化
+    const oldSuperChatEnabled = config.eventSettings?.superChatEnabled;
+    const newSuperChatEnabled = newConfig.eventSettings?.superChatEnabled;
+    if (oldSuperChatEnabled !== newSuperChatEnabled) {
+      console.log(`[弹幕监听] SuperChat监听已${newSuperChatEnabled ? '启用' : '禁用'}`);
+    }
+
+    const oldGuardEnabled = config.eventSettings?.guardPurchaseEnabled;
+    const newGuardEnabled = newConfig.eventSettings?.guardPurchaseEnabled;
+    if (oldGuardEnabled !== newGuardEnabled) {
+      console.log(`[弹幕监听] 舰长监听已${newGuardEnabled ? '启用' : '禁用'}`);
+    }
+
+    // 日志命令更新信息
+    if (newConfig.commandRules) {
+      newConfig.commandRules.forEach((rule, index) => {
+        const commandCount = rule.commands ? rule.commands.length : 1;
+        const status = rule.enabled ? '启用' : '禁用';
+        console.log(`[弹幕监听] 规则${index + 1}: ${rule.name} (${rule.count}次触发, ${commandCount}个命令, ${status})`);
+      });
+    }
+
+    console.log('[弹幕监听] ✅ 配置热更新完成，无需重启服务');
+    return true;
+  }
+
   // 测试SuperChat事件
   async testSuperChat() {
     console.log(`[弹幕监听] 🧪 测试SuperChat事件`);
