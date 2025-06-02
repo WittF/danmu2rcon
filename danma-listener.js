@@ -5,6 +5,9 @@ class DanmuListener {
     this.rconClient = rconClient;
     this.isActive = false;
     
+    // 新增：总累计关键词统计
+    this.totalKeywordCount = 0;
+    
     // 为每个规则创建独立的计数器
     this.ruleCounters = {};
     config.commandRules.forEach((rule, index) => {
@@ -57,6 +60,10 @@ class DanmuListener {
     // 检查是否精确匹配触发关键词
     if (message === config.triggerMessage) {
       console.log(`[弹幕监听] ${username}: ${message}`);
+      
+      // 增加总累计关键词计数
+      this.totalKeywordCount++;
+      console.log(`[弹幕监听] 📊 累计收到关键词: ${this.totalKeywordCount}个`);
       
       // 同时为所有启用的事件的计数器+1
       Object.keys(this.ruleCounters).forEach(ruleIndex => {
@@ -130,7 +137,8 @@ class DanmuListener {
       isActive: this.isActive,
       triggerMessage: config.triggerMessage,
       counters: counters,
-      rules: config.commandRules
+      rules: config.commandRules,
+      totalKeywordCount: this.totalKeywordCount // 新增：返回总累计关键词数
     };
   }
 
@@ -139,6 +147,7 @@ class DanmuListener {
     Object.keys(this.ruleCounters).forEach(ruleIndex => {
       this.ruleCounters[ruleIndex].count = 0;
     });
+    // 不重置总累计数，保持历史记录
     console.log('[弹幕监听] 所有事件计数器已重置');
   }
 
@@ -356,6 +365,29 @@ class DanmuListener {
       priceNormalized: 198,
       giftName: '舰长'
     };
+    await this.processGuardPurchase(testEvent);
+  }
+
+  // 测试不同等级舰长开通事件
+  async testGuardPurchaseByLevel(level = 3) {
+    const guardLevels = {
+      1: { name: '总督', price: 1998, icon: '👑' },
+      2: { name: '提督', price: 998, icon: '⚓' }, 
+      3: { name: '舰长', price: 198, icon: '🚢' }
+    };
+
+    const guardInfo = guardLevels[level] || guardLevels[3];
+    
+    console.log(`[弹幕监听] 🧪 测试${guardInfo.name}开通事件 ${guardInfo.icon}`);
+    
+    const testEvent = {
+      username: `测试${guardInfo.name}`,
+      guardType: level,
+      price: guardInfo.price,
+      priceNormalized: guardInfo.price,
+      giftName: guardInfo.name
+    };
+    
     await this.processGuardPurchase(testEvent);
   }
 }

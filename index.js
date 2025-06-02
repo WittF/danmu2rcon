@@ -423,6 +423,27 @@ app.post('/test-guard', async (req, res) => {
   }
 });
 
+// 测试特定等级舰长开通
+app.post('/test-guard/:level', async (req, res) => {
+  try {
+    // 确保RCON连接
+    if (!rconClient.isConnected) {
+      await rconClient.connect();
+    }
+    
+    const level = parseInt(req.params.level);
+    if (level < 1 || level > 3) {
+      return res.status(400).json({ message: '舰长等级必须在1-3之间 (1=总督, 2=提督, 3=舰长)' });
+    }
+    
+    const levelNames = { 1: '总督', 2: '提督', 3: '舰长' };
+    await danmuListener.testGuardPurchaseByLevel(level);
+    res.json({ message: `测试${levelNames[level]}开通已发送到MC` });
+  } catch (error) {
+    res.status(500).json({ message: '测试失败: ' + error.message });
+  }
+});
+
 // 切换SuperChat监听
 app.post('/toggle-superchat', (req, res) => {
   try {
@@ -1544,7 +1565,9 @@ app.get('/', (req, res) => {
                     <div class="toggle-switch-guard" onclick="toggleGuardPurchase()" id="guard-toggle" data-enabled="${specialEvents.guardPurchaseEnabled}"></div>
                   </div>
                   <div class="event-actions">
-                    <button onclick="testGuardPurchase()" class="test-btn">测试舰长</button>
+                    <button onclick="testGuardPurchase(3)" class="test-btn">🚢 舰长</button>
+                    <button onclick="testGuardPurchase(2)" class="test-btn">⚓ 提督</button>
+                    <button onclick="testGuardPurchase(1)" class="test-btn">👑 总督</button>
                   </div>
                 </div>
               </div>
@@ -1568,8 +1591,8 @@ app.get('/', (req, res) => {
               <h3>📈 统计概览</h3>
               <div class="stats-cards">
                 <div class="stat-card">
-                  <div class="stat-number">${Object.values(status.counters || {}).reduce((sum, counter) => sum + counter.triggeredTimes, 0)}</div>
-                  <div class="stat-label">总触发次数</div>
+                  <div class="stat-number">${status.totalKeywordCount || 0}</div>
+                  <div class="stat-label">总累计次数</div>
                 </div>
                 <div class="stat-card">
                   <div class="stat-number">${Object.values(status.counters || {}).reduce((sum, counter) => sum + counter.count, 0)}</div>
@@ -1820,13 +1843,26 @@ app.get('/', (req, res) => {
             .catch(err => showNotification('测试失败', 'error'));
         }
 
-        function testGuardPurchase() {
+        function testGuardPurchase(level = null) {
+          const levelNames = { 1: '总督', 2: '提督', 3: '舰长' };
+          
+          if (level && level >= 1 && level <= 3) {
+            // 测试特定等级
+            fetch(\`/test-guard/\${level}\`, {method: 'POST'})
+              .then(response => response.json())
+              .then(data => {
+                showNotification(data.message, 'success');
+              })
+              .catch(err => showNotification(\`测试\${levelNames[level]}失败\`, 'error'));
+          } else {
+            // 默认测试舰长
           fetch('/test-guard', {method: 'POST'})
             .then(response => response.json())
             .then(data => {
               showNotification(data.message, 'success');
             })
             .catch(err => showNotification('测试失败', 'error'));
+          }
         }
 
         function toggleSuperChat() {
@@ -1947,13 +1983,13 @@ app.get('/', (req, res) => {
               });
               
               // 更新统计概览
-              const totalTriggers = Object.values(counters).reduce((sum, counter) => sum + counter.triggeredTimes, 0);
+              const totalKeywords = data.danmu.totalKeywordCount || 0;
               const totalCurrent = Object.values(counters).reduce((sum, counter) => sum + counter.count, 0);
               
-              const totalTriggersElement = document.querySelector('.stat-card:nth-child(1) .stat-number');
+              const totalKeywordsElement = document.querySelector('.stat-card:nth-child(1) .stat-number');
               const totalCurrentElement = document.querySelector('.stat-card:nth-child(2) .stat-number');
               
-              if (totalTriggersElement) totalTriggersElement.textContent = totalTriggers;
+              if (totalKeywordsElement) totalKeywordsElement.textContent = totalKeywords;
               if (totalCurrentElement) totalCurrentElement.textContent = totalCurrent;
               
               // 更新连接状态指示器

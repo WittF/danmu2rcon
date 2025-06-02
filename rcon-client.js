@@ -80,8 +80,8 @@ class RconClient {
     const offsetX = Math.round(randomDistance * Math.cos(randomAngle));
     const offsetZ = Math.round(randomDistance * Math.sin(randomAngle));
     
-    // 生成命令 - 使用execute as @r结合tellraw来同时生成怪物和显示玩家信息
-    const command = `/execute as @r at @s run summon ${selectedMonster.id} ~${offsetX} ~ ~${offsetZ}`;
+    // 生成命令 - 使用execute as @r[gamemode=!spectator]排除旁观者模式玩家
+    const command = `/execute as @r[gamemode=!spectator] at @s run summon ${selectedMonster.id} ~${offsetX} ~ ~${offsetZ}`;
     
     // 危险等级配置 - 指数级增加的提醒系统
     const dangerConfig = {
@@ -331,12 +331,12 @@ class RconClient {
         
         // 优化的命令序列 - 减少命令数量，提高并发性能
         const commands = [
-          // 1. 随机选择玩家并标记
-          `/tag @r add ${uniqueTag}`,
+          // 1. 随机选择玩家并标记（排除旁观者模式）
+          `/tag @r[gamemode=!spectator] add ${uniqueTag}`,
           // 2. 给目标玩家添加发光效果，让怪物更容易发现
           `/execute as @a[tag=${uniqueTag}] run effect give @s minecraft:glowing 15 0 true`,
           // 3. 生成怪物
-          result.command.replace('@r', `@a[tag=${uniqueTag}]`),
+          result.command.replace('@r[gamemode=!spectator]', `@a[tag=${uniqueTag}]`),
           // 4. 增强怪物的跟踪范围和移动速度
           `/execute as @a[tag=${uniqueTag}] at @s run attribute @e[distance=..15,limit=1,sort=nearest] minecraft:generic.follow_range base set 32`,
           `/execute as @a[tag=${uniqueTag}] at @s run attribute @e[distance=..15,limit=1,sort=nearest] minecraft:generic.movement_speed base set 0.35`,
