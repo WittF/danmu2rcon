@@ -1,6 +1,6 @@
 {
   "name": "danmu2rcon",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "B站弹幕事件监听系统，可以监听特定弹幕内容并自动触发Minecraft服务器RCON命令",
   "main": "index.js",
   "scripts": {
