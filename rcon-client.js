@@ -35,11 +35,13 @@ class RconClient {
     this.poolSize = 3; // 3个并发连接
     this.poolInitialized = false;
     
-    // 随机怪物配置 - 完全随机生成
+    // 随机怪物配置 - 完全随机生成（包含所有敌对生物）
     this.monsters = [
-      // 低危险怪物
+      // 低危险怪物 - 基础威胁，攻击力低，移动相对缓慢
       { id: 'minecraft:zombie', name: '僵尸', icon: '🧟', danger: 'low' },
+      { id: 'minecraft:zombie_villager', name: '僵尸村民', icon: '🧟‍♂️', danger: 'low' },
       { id: 'minecraft:skeleton', name: '骷髅', icon: '💀', danger: 'low' },
+      { id: 'minecraft:bogged', name: '沼骸', icon: '🏹', danger: 'low' },
       { id: 'minecraft:spider', name: '蜘蛛', icon: '🕷️', danger: 'low' },
       { id: 'minecraft:slime', name: '史莱姆', icon: '🟢', danger: 'low' },
       { id: 'minecraft:husk', name: '尸壳', icon: '🏜️', danger: 'low' },
@@ -47,19 +49,34 @@ class RconClient {
       { id: 'minecraft:drowned', name: '溺尸', icon: '🌊', danger: 'low' },
       { id: 'minecraft:silverfish', name: '蠹虫', icon: '🐛', danger: 'low' },
       { id: 'minecraft:cave_spider', name: '洞穴蜘蛛', icon: '🕸️', danger: 'low' },
+      { id: 'minecraft:zombified_piglin', name: '僵尸猪灵', icon: '🐷‍☠️', danger: 'low' },
+      { id: 'minecraft:endermite', name: '末影螨', icon: '🐛', danger: 'low' },
       
-      // 中危险怪物
+      // 中危险怪物 - 中等威胁，有特殊能力或较强攻击力
       { id: 'minecraft:witch', name: '女巫', icon: '🧙', danger: 'medium' },
       { id: 'minecraft:blaze', name: '烈焰人', icon: '🔥', danger: 'medium' },
       { id: 'minecraft:pillager', name: '掠夺者', icon: '🏹', danger: 'medium' },
       { id: 'minecraft:guardian', name: '守卫者', icon: '🐙', danger: 'medium' },
       { id: 'minecraft:enderman', name: '末影人', icon: '👁️', danger: 'medium' },
       { id: 'minecraft:vindicator', name: '卫道士', icon: '⚔️', danger: 'medium' },
+      { id: 'minecraft:ravager', name: '劫掠兽', icon: '🐗', danger: 'medium' },
+      { id: 'minecraft:piglin_brute', name: '蛮兵', icon: '🐷', danger: 'medium' },
+      { id: 'minecraft:piglin', name: '猪灵', icon: '🐷', danger: 'medium' },
+      { id: 'minecraft:creeper', name: '苦力怕', icon: '💥', danger: 'medium' },
+      { id: 'minecraft:phantom', name: '幻翼', icon: '👤', danger: 'medium' },
+      { id: 'minecraft:magma_cube', name: '岩浆怪', icon: '🔶', danger: 'medium' },
+      { id: 'minecraft:ghast', name: '恶魂', icon: '👻', danger: 'medium' },
+      { id: 'minecraft:hoglin', name: '疣猪兽', icon: '🐗', danger: 'medium' },
+      { id: 'minecraft:zoglin', name: '僵尸疣猪兽', icon: '🐷‍☠️', danger: 'medium' },
+      { id: 'minecraft:shulker', name: '潜影贝', icon: '📦', danger: 'medium' },
+      { id: 'minecraft:wither_skeleton', name: '凋灵骷髅', icon: '💀', danger: 'medium' },
       
-      // 高危险怪物  
-      { id: 'minecraft:creeper', name: '苦力怕', icon: '💥', danger: 'high' },
+      // 高危险怪物 - 极高威胁，BOSS级或具有毁灭性能力
+      { id: 'minecraft:vex', name: '恼鬼', icon: '👻', danger: 'high' },
+      { id: 'minecraft:evoker', name: '幻魔者', icon: '🔮', danger: 'high' },
       { id: 'minecraft:warden', name: '监守者', icon: '👹', danger: 'high' },
-      { id: 'minecraft:elder_guardian', name: '远古守卫者', icon: '👑', danger: 'high' }
+      { id: 'minecraft:elder_guardian', name: '远古守卫者', icon: '👑', danger: 'high' },
+      { id: 'minecraft:wither', name: '凋灵', icon: '💀', danger: 'high' }
     ];
     
     // 保存最后生成的怪物信息（包含危险等级）
@@ -73,14 +90,37 @@ class RconClient {
     // 随机选择怪物
     const selectedMonster = this.monsters[Math.floor(Math.random() * this.monsters.length)];
     
-    // 随机选择方向偏移 (更加随机的距离)
-    const randomDistance = 8 + Math.floor(Math.random() * 5); // 8-12格距离
+    // 【新实现 - 基于危险等级的距离生成】
+    let randomDistance, minDistance, maxDistance;
+    
+    // 根据危险等级设置生成距离范围
+    switch (selectedMonster.danger) {
+      case 'low':
+        minDistance = 0;
+        maxDistance = 3;
+        break;
+      case 'medium':
+        minDistance = 2;
+        maxDistance = 3;
+        break;
+      case 'high':
+        minDistance = 4;
+        maxDistance = 5;
+        break;
+      default:
+        minDistance = 0;
+        maxDistance = 2;
+    }
+    
+    // 生成随机距离和角度
+    randomDistance = minDistance + Math.floor(Math.random() * (maxDistance - minDistance + 1));
     const randomAngle = Math.random() * 2 * Math.PI; // 随机角度
     
     const offsetX = Math.round(randomDistance * Math.cos(randomAngle));
     const offsetZ = Math.round(randomDistance * Math.sin(randomAngle));
     
     // 生成命令 - 使用execute as @r[gamemode=!spectator]排除旁观者模式玩家
+    // 支持NBT数据的怪物生成
     const command = `/execute as @r[gamemode=!spectator] at @s run summon ${selectedMonster.id} ~${offsetX} ~ ~${offsetZ}`;
     
     // 危险等级配置 - 指数级增加的提醒系统
@@ -133,24 +173,27 @@ class RconClient {
         particleSpread: 5,
         extraParticles: ['minecraft:large_smoke', 'minecraft:lava', 'minecraft:explosion', 'minecraft:dragon_breath'],
         // 音效系统 - 紧急警报
-        soundDistance: 80, // 80格内听到
+        soundDistance: 40, // 80格内听到
         primarySound: 'minecraft:entity.lightning_bolt.thunder',
         secondarySound: 'minecraft:entity.wither.spawn',
         soundVolume: 1.0,
         // 通知范围 - 大范围
-        notificationDistance: 160,
+        notificationDistance: 80,
         // 消息前缀
         messagePrefix: '🚨'
       }
     };
     
-    console.log(`[RCON] 🎲 随机生成: ${selectedMonster.icon} ${selectedMonster.name} 在偏移(${offsetX}, ${offsetZ}) 距离: ${randomDistance}格`);
+    console.log(`[RCON] 🎲 生成策略: ${selectedMonster.icon} ${selectedMonster.name} (${selectedMonster.danger}危险) 距离${minDistance}-${maxDistance}格 实际${randomDistance}格 位置(${offsetX},${offsetZ})`);
+    console.log(`[RCON] 💾 备注: 原8-12格随机距离实现已注释保留，可随时恢复`);
     
     const currentDangerConfig = dangerConfig[selectedMonster.danger];
+    console.log(`[RCON] 📏 距离配置: 低危0-3格 | 中危2-3格 | 高危4-5格 - 当前${selectedMonster.danger}危险级别`);
     console.log(`[RCON] 📢 效果范围: 音效${currentDangerConfig.soundDistance === 0 ? '仅本人' : currentDangerConfig.soundDistance + '格'} | 通知${currentDangerConfig.notificationDistance}格 | 粒子${currentDangerConfig.particleCount}个`);
     console.log(`[RCON] 🎵 音效配置: ${currentDangerConfig.primarySound.split(':')[1]} + ${currentDangerConfig.secondarySound.split(':')[1]} (音量${currentDangerConfig.soundVolume})`);
     console.log(`[RCON] ⚡ 性能优化: 使用${this.poolSize}个并发RCON连接，大幅减少延迟`);
-    console.log(`[RCON] 🎯 怪物增强: 生成后将锁定目标玩家，增强追踪能力`);
+    console.log(`[RCON] 🎯 AI优化: 跟踪范围32格，保持怪物原有属性不变`);
+    console.log(`[RCON] 📊 怪物库: ${this.monsters.length}种敌对生物 (低危${this.monsters.filter(m => m.danger === 'low').length} | 中危${this.monsters.filter(m => m.danger === 'medium').length} | 高危${this.monsters.filter(m => m.danger === 'high').length})`);
     
     // 返回命令和怪物信息（包含危险等级）
     return {
@@ -356,13 +399,13 @@ class RconClient {
         const commands = [
           // 1. 随机选择玩家并标记（排除旁观者模式）
           `/tag @r[gamemode=!spectator] add ${uniqueTag}`,
-          // 2. 给目标玩家添加发光效果，让怪物更容易发现
-          `/execute as @a[tag=${uniqueTag}] run effect give @s minecraft:glowing 15 0 true`,
+          // 2. 给目标玩家添加短暂发光效果，让怪物更容易发现
+          `/execute as @a[tag=${uniqueTag}] run effect give @s minecraft:glowing 10 0 true`,
           // 3. 生成怪物
           result.command.replace('@r[gamemode=!spectator]', `@a[tag=${uniqueTag}]`),
-          // 4. 增强怪物的跟踪范围和移动速度
-          `/execute as @a[tag=${uniqueTag}] at @s run attribute @e[distance=..15,limit=1,sort=nearest] minecraft:generic.follow_range base set 32`,
-          `/execute as @a[tag=${uniqueTag}] at @s run attribute @e[distance=..15,limit=1,sort=nearest] minecraft:generic.movement_speed base set 0.35`,
+          // 4. 【AI优化】仅优化怪物的跟踪范围，保持原有属性
+          // 适度提高跟踪范围 - 确保怪物不会轻易失去目标
+          `/execute as @a[tag=${uniqueTag}] at @s run attribute @e[distance=..20,limit=1,sort=nearest] minecraft:generic.follow_range base set 32`,
           // 5. 发送聊天消息
           `/execute as @a[tag=${uniqueTag}] run tellraw @a {"text":"${result.messagePrefix} 弹幕触发！在","color":"${result.dangerColor}","extra":[{"selector":"@s","color":"yellow"},{"text":"身边召唤了${result.monsterIcon} ${result.monsterName}！","color":"${result.dangerTextColor}","bold":true}]}`
         ];
@@ -450,10 +493,10 @@ class RconClient {
       }
 
       // 重新划分批次，优化执行顺序
-      // 批次1：核心命令（标记、效果、生成、增强）- 必须顺序执行
-      const coreCommands = commands.slice(0, 5);
+      // 批次1：核心命令（标记、效果、生成、AI优化）- 必须顺序执行
+      const coreCommands = commands.slice(0, 4);
       // 批次2：消息和效果命令 - 可以并发执行
-      const effectCommands = commands.slice(5, -1);
+      const effectCommands = commands.slice(4, -1);
       // 批次3：清理命令
       const cleanupCommands = commands.slice(-1);
 

@@ -358,6 +358,32 @@ class DanmuListener {
       console.log(`[弹幕监听] 命令规则数量已更新: ${oldRulesCount} -> ${newRulesCount}`);
     }
 
+    // 🔥 关键修复：更新内部的ruleCounters结构
+    console.log('[弹幕监听] 📊 更新内部计数器结构...');
+    const oldCounters = { ...this.ruleCounters }; // 备份当前计数
+    this.ruleCounters = {}; // 重建计数器结构
+    
+    newConfig.commandRules.forEach((rule, index) => {
+      // 保留原有的计数和触发次数（如果存在）
+      const oldCounter = oldCounters[index];
+      this.ruleCounters[index] = {
+        count: oldCounter ? oldCounter.count : 0,
+        rule: rule, // 使用新的规则配置
+        triggeredTimes: oldCounter ? oldCounter.triggeredTimes : 0
+      };
+      
+      // 如果触发次数要求发生变化，记录日志
+      if (oldCounter && oldCounter.rule.count !== rule.count) {
+        console.log(`[弹幕监听] 事件${index + 1}(${rule.name}) 触发要求更新: ${oldCounter.rule.count} -> ${rule.count}`);
+      }
+    });
+
+    // 移除已删除的规则对应的计数器
+    const removedRules = Object.keys(oldCounters).filter(index => !this.ruleCounters[index]);
+    if (removedRules.length > 0) {
+      console.log(`[弹幕监听] 🗑️ 移除了 ${removedRules.length} 个已删除规则的计数器`);
+    }
+
     // 检查事件设置变化
     const oldSuperChatEnabled = config.eventSettings?.superChatEnabled;
     const newSuperChatEnabled = newConfig.eventSettings?.superChatEnabled;
@@ -376,11 +402,12 @@ class DanmuListener {
       newConfig.commandRules.forEach((rule, index) => {
         const commandCount = rule.commands ? rule.commands.length : 1;
         const status = rule.enabled ? '启用' : '禁用';
-        console.log(`[弹幕监听] 规则${index + 1}: ${rule.name} (${rule.count}次触发, ${commandCount}个命令, ${status})`);
+        const currentCount = this.ruleCounters[index].count;
+        console.log(`[弹幕监听] 规则${index + 1}: ${rule.name} (${rule.count}次触发, ${commandCount}个命令, ${status}) [当前计数: ${currentCount}]`);
       });
     }
 
-    console.log('[弹幕监听] ✅ 配置热更新完成，无需重启服务');
+    console.log('[弹幕监听] ✅ 配置热更新完成，计数器结构已同步，无需重启服务');
     return true;
   }
 
