@@ -4,7 +4,7 @@
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)]()
 
-一个强大的实时系统，将B站直播弹幕转换为Minecraft游戏内的RCON命令，为直播增加互动性。
+【AI】一个强大的实时系统，将B站直播弹幕转换为Minecraft游戏内的RCON命令，为直播增加互动性。
 
 ## ✨ 主要特性
 
