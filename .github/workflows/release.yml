@@ -146,38 +146,27 @@ jobs:
           tag_name: ${{ steps.version.outputs.version }}
           name: Danmu2RCON ${{ steps.version.outputs.version }}
           body: |
-            ## 🎉 版本 ${{ steps.version.outputs.version }} 发布
+            ## 版本 ${{ steps.version.outputs.version }}
 
-            ### 📥 下载选项
-            - **完整版本** (`danmu2rcon-${{ steps.version.outputs.clean_version }}-full.zip`): 包含所有依赖，下载即用
-            - **源码版本** (`danmu2rcon-${{ steps.version.outputs.clean_version }}-source.zip`): 仅源码，需要运行 `npm install`
+            ### 下载
+            - **完整版** (`-full.zip`) — 包含依赖，解压即用
+            - **源码版** (`-source.zip`) — 需运行 `npm install` 安装依赖
 
-            ### 🌏 下载镜像
-            - **GitHub Release**：当前页面直接下载
-            - **中国境内镜像**：https://pan.wittf.ink/s/ekAfp/
-              - 如提示"无权限访问"，请自行注册账号后下载
+            ### 快速开始
+            1. 下载完整版并解压
+            2. 运行 `node index.js`
+            3. 浏览器访问 http://localhost:3000 进行配置
 
-            ### 🚀 快速开始
-            1. 下载完整版本
-            2. 解压到任意目录
-            3. 运行 `node index.js`
-            4. 访问 http://localhost:3000 进行配置
+            ### 环境要求
+            - Node.js 16+
+            - 已开启 RCON 的 Minecraft 服务器
+            - [LAPLACE Chat](https://chat.laplace.live/) 弹幕客户端
 
-            ### 📋 系统要求
-            - Node.js 16.0+
-            - Minecraft服务器（开启RCON）
-            - LAPLACE Chat弹幕客户端
-
-            ### 🔄 变更内容
+            ### 变更内容
             ${{ steps.changelog.outputs.changelog_content }}
 
-            ### 📞 技术支持
-            - 📚 使用文档：查看项目README
-            - 🐛 问题反馈：[GitHub Issues](https://github.com/${{ github.repository }}/issues)
-            - 📧 联系作者：WittF@qq.com
-
             ---
-            ⭐ 如果这个项目对您有帮助，请给个星标支持！
+            问题反馈：[GitHub Issues](https://github.com/${{ github.repository }}/issues)
           files: |
             danmu2rcon-${{ steps.version.outputs.clean_version }}-full.zip
             danmu2rcon-${{ steps.version.outputs.clean_version }}-source.zip

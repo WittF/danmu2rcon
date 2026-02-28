@@ -1,199 +1,63 @@
-# 🤝 贡献指南
+# 贡献指南
 
-感谢您对 **Danmu2RCON** 项目的关注！我们欢迎所有形式的贡献。
+感谢你对 Danmu2RCON 的关注，欢迎提交 Issue 和 Pull Request。
 
-## 🌟 贡献方式
+## Bug 报告
 
-### 🐛 Bug报告
-如果您发现了Bug，请：
-1. 检查 [Issues](https://github.com/WittF/danmu2rcon/issues) 中是否已有相同问题
-2. 如果没有，请创建新的Issue并包含：
-   - 详细的Bug描述
-   - 复现步骤
-   - 期望的行为
-   - 实际行为
-   - 系统环境信息
-   - 相关日志
+提交前请先搜索 [已有 Issue](https://github.com/WittF/danmu2rcon/issues)，避免重复。新建 Issue 时请包含：
 
-### 💡 功能建议
-我们欢迎新功能的建议：
-1. 在 [Discussions](https://github.com/WittF/danmu2rcon/discussions) 中讨论您的想法
-2. 说明功能的用途和价值
-3. 提供详细的功能描述
+- Bug 描述和复现步骤
+- 期望行为 vs 实际行为
+- 系统环境（OS、Node.js 版本）
+- 相关日志
 
-### 🔧 代码贡献
-1. **Fork** 项目到您的GitHub账户
-2. 创建功能分支：`git checkout -b feature/AmazingFeature`
-3. 进行您的修改
-4. 提交变更：`git commit -m 'Add some AmazingFeature'`
-5. 推送到分支：`git push origin feature/AmazingFeature`
-6. 创建 **Pull Request**
+## 代码贡献
 
-## 📋 开发准备
-
-### 环境要求
-- Node.js 16.0+
-- Git
-- 一个代码编辑器（推荐VS Code）
-
-### 本地设置
 ```bash
-# 克隆您的fork
-git clone https://github.com/WittF/danmu2rcon.git
+# 1. Fork 并克隆
+git clone https://github.com/<your-username>/danmu2rcon.git
 cd danmu2rcon
-
-# 安装依赖
 npm install
 
-# 启动开发模式
+# 2. 创建分支
+git checkout -b feature/your-feature
+
+# 3. 开发（支持热重载）
 npm run dev
+
+# 4. 提交并推送
+git commit -m "feat: 你的改动描述"
+git push origin feature/your-feature
+
+# 5. 创建 Pull Request
 ```
 
-## 🎯 代码规范
-
-### JavaScript风格
-- 使用2个空格缩进
-- 使用单引号
-- 行尾加分号
-- 变量命名使用camelCase
-- 常量使用UPPER_CASE
-
-### 示例代码风格
-```javascript
-// 好的
-const eventBridge = new EventBridgeServer(danmuListener);
-const MAX_RETRIES = 3;
-
-function handleMessage(data) {
-  const message = data.message || '';
-  if (message.includes(config.triggerMessage)) {
-    processMessage(message);
-  }
-}
-
-// 不好
-const event_bridge=new EventBridgeServer(danmuListener)
-const maxRetries=3
-
-function handleMessage(data){
-const message=data.message||""
-if(message.includes(config.triggerMessage)){
-processMessage(message)
-}
-}
-```
-
-### 注释规范
-```javascript
-/**
- * 处理弹幕消息
- * @param {string} message - 弹幕内容
- * @param {string} username - 用户名
- * @returns {boolean} 是否处理成功
- */
-function processMessage(message, username) {
-  // 检查是否匹配触发关键词
-  if (message === config.triggerMessage) {
-    // ... 处理逻辑
-    return true;
-  }
-  return false;
-}
-```
-
-## 📂 项目结构
+## 项目结构
 
 ```
-danmu2rcon/
-├── index.js                    # 主服务器文件
-├── rcon-client.js             # RCON客户端
-├── event-bridge-server.js     # Event Bridge服务
-├── danma-listener.js          # 弹幕监听
-├── config.js                  # 配置文件
-├── package.json               # 项目配置
-├── public/                    # 静态文件
-└── favicon.ico
-├── docs/                      # 文档（如果需要）
-└── tests/                     # 测试文件（计划中）
+index.js                  # 主服务器（Express + API）
+rcon-client.js            # RCON 客户端与怪物生成逻辑
+danma-listener.js         # 弹幕监听与规则计数
+event-bridge-server.js    # Event Bridge WebSocket 服务
+config.js                 # 配置文件
+public/                   # 前端静态资源
 ```
 
-## 🧪 测试
+## 代码规范
 
-目前项目还没有完整的测试套件，但我们欢迎贡献。
+- 2 空格缩进，单引号，行尾分号
+- 变量 `camelCase`，常量 `UPPER_CASE`
+- 提交信息格式：`类型: 描述`（如 `feat: 新增XX`、`fix: 修复XX`、`docs: 更新文档`）
 
-### 手动测试
-启动项目后测试以下功能：
-- [ ] Web界面正常加载
-- [ ] RCON连接功能
-- [ ] 弹幕监听功能
-- [ ] 配置保存功能
-- [ ] 事件触发功能
+## PR 检查清单
 
-### 计划中的自动化测试
-- 单元测试（Jest）
-- 集成测试
-- E2E测试
-
-## 📝 提交信息规范
-
-使用清晰的提交信息：
-
-```bash
-# 格式：类型>: <描述>
-
-🎨 style: 改进Web界面样式
-📝 docs: 更新README
-🔧 chore: 更新依赖
-🧪 test: 添加单元测试
-♻️ refactor: 重构事件处理逻辑
-🎵 perf: 优化内存使用
-```
-
-## 🔍 Pull Request检查清单
-
-提交PR前请确认：
-
-- [ ] 代码遵循项目风格指南
-- [ ] 已添加适当的注释
-- [ ] 功能经过充分测试
+- [ ] 遵循项目代码风格
+- [ ] 经过功能测试
 - [ ] 更新了相关文档
-- [ ] 提交信息清晰明确
-- [ ] 没有遗留调试代码
-- [ ] 新功能有相应的配置选项
+- [ ] 无遗留调试代码
 
-## 🎯 开发重点
+## 联系
 
-我们特别欢迎以下方面的贡献：
-
-### 🔥 高优先级
-- 🧪 测试覆盖率提升
-- 📊 性能优化
-- 🔒 安全性增强
-- 🐛 Bug修复
-
-### 🌟 新功能
-- 🎵 音效支持
-- 📈 数据统计
-- 🌍 多语言支持
-- 🔌 插件系统
-
-### 📚 文档
-- 🎥 视频教程
-- 🖼 截图更新
-- 📖 API文档
-- 🛠 部署指南
-
-## 📞 获得帮助
-
-如果您有任何问题：
-
-1. 📚 查看 [README.md](README.md)
-2. 🔍 搜索 [Issues](https://github.com/WittF/danmu2rcon/issues)
-3. 💬 在 [Discussions](https://github.com/WittF/danmu2rcon/discussions) 中提问
-4. 📧 发送邮件到：WittF@qq.com
-
-## 🏆 贡献者认证
-
-所有贡献者都将在项目中得到认可！
-
-感谢您的贡献🎉 
+- [Issues](https://github.com/WittF/danmu2rcon/issues)
+- [Discussions](https://github.com/WittF/danmu2rcon/discussions)
+- 邮箱：WittF@qq.com
